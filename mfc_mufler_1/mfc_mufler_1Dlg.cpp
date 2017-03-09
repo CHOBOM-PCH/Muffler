@@ -87,6 +87,7 @@ BEGIN_MESSAGE_MAP(Cmfc_mufler_1Dlg, CDialogEx)
 	ON_WM_DESTROY()
 	ON_BN_CLICKED(IDC_Open_btn, &Cmfc_mufler_1Dlg::OnBnClickedOpenbtn)
 	ON_BN_CLICKED(IDC_Spline, &Cmfc_mufler_1Dlg::OnBnClickedSpline)
+	ON_BN_CLICKED(IDC_Sensor_btn, &Cmfc_mufler_1Dlg::OnBnClickedSensorbtn)
 END_MESSAGE_MAP()
 
 
@@ -430,57 +431,12 @@ void Cmfc_mufler_1Dlg::OnTimer(UINT_PTR nIDEvent)
 		if(distance == 0);//거리측정이 안되었을때 쓰레기값 입력 방지
 		else{
 			//int time=1000;//토크 측정을 위한 시간
-
 			z = z + 10;//x값 변화량임 나중에 실제 촬영하면 속도에따라 변하는 거리값 삽입
 			x.push_back(z);
 			y.push_back(distance);
 			x_z = &x_m;
 			y_z = &y_m;
-
-
-			if (x.size() > 2)//x배열의 개수가 2개 이상일때 그래프를 찾음
-				cubic_spline(x,y,x_z,y_z);
-
-			//for (int k = 0;k<x.size();k++){//입력된 값에 의한 그래프
-			//	//printf("입력된 값 x = %lf , y = %lf \n" ,x[k],y[k]);
-			//	string te;//string 에 가변 숫자 변수 입력
-
-			//	stringstream ste;
-			//	ste<<"x = "<<x[k]<<", y = "<<y[k]<<"\r\n"<<endl;
-
-			//	te=ste.str();
-			//	line_data = (te.c_str());//string->CString
-			//	//str.Format("%d", i); 
-			//	SetDlgItemText(IDC_Line, line_data); 
-			//	GetDlgItem(IDC_Line)->UpdateWindow();
-			//	//그래프 실행
-			//	//data[0] = y[k];
-
-
-			//	//UpdateData(FALSE);//data의 값을 올린다.
-			//	//	if (k == 0);
-			//	//	else
-			//	//		line(plot_img,Point(x[k-1],y[k-1]),Point(x[k],y[k]),Scalar(0,255,255),2,8,0);
-
-			//}
 			
-
-			for (int k =0;k<x_m.size();k++){//mono spline후 그래프
-				string te;//string 에 가변 숫자 변수 입력
-				stringstream ste;
-				ste<<"x = "<<x_m[k]<<", y = "<<y_m[k]<<"\r\n"<<endl;
-
-				te=ste.str();
-				line_data = (te.c_str());//string->CString
-				SetDlgItemText(IDC_Line, line_data); 
-				GetDlgItem(IDC_Line)->UpdateWindow();
-				//UpdateData(FALSE);//data의 값을 
-				//data[0] = y_m[k];
-			
-				}
-				
-				
-
 			}
 		
 		}
@@ -517,6 +473,56 @@ void Cmfc_mufler_1Dlg::OnBnClickedSpline()
 	//SetTimer(234,1000,NULL);
 
 
+
+	if (x.size() > 2){//x배열의 개수가 2개 이상일때 그래프를 찾음
+		cubic_spline(x,y,x_z,y_z);
+	}
+	//for (int k = 0;k<x.size();k++){//입력된 값에 의한 그래프
+	//	//printf("입력된 값 x = %lf , y = %lf \n" ,x[k],y[k]);
+	//	string te;//string 에 가변 숫자 변수 입력
+
+	//	stringstream ste;
+	//	ste<<"x = "<<x[k]<<", y = "<<y[k]<<"\r\n"<<endl;
+
+	//	te=ste.str();
+	//	line_data = (te.c_str());//string->CString
+	//	//str.Format("%d", i); 
+	//	SetDlgItemText(IDC_Line, line_data); 
+	//	GetDlgItem(IDC_Line)->UpdateWindow();
+	//	//그래프 실행
+	//	//data[0] = y[k];
+
+
+	//	//UpdateData(FALSE);//data의 값을 올린다.
+	//	//	if (k == 0);
+	//	//	else
+	//	//		line(plot_img,Point(x[k-1],y[k-1]),Point(x[k],y[k]),Scalar(0,255,255),2,8,0);
+
+	//}
+
+
+	for (int k =0;k<x_m.size();k++){//mono spline후 그래프
+		string te;//string 에 가변 숫자 변수 입력
+		stringstream ste;
+		ste<<"x = "<<x_m[k]<<", y = "<<y_m[k]<<"\r\n"<<endl;
+
+		te=ste.str();
+		line_data = (te.c_str());//string->CString
+		SetDlgItemText(IDC_Line, line_data); 
+		GetDlgItem(IDC_Line)->UpdateWindow();
+		//UpdateData(FALSE);//data의 값을 
+		//data[0] = y_m[k];
+	}
+
+
+
+
+	}
+
+
+void Cmfc_mufler_1Dlg::OnBnClickedSensorbtn()
+{
+	// TODO: 여기에 컨트롤 알림 처리기 코드를 추가합니다.
 	memset(&hlans, 0x00, sizeof(RF60xHELLOANSWER));
 
 	RF60x_OpenPort("COM3:", CBR_9600, &hRF60x);
@@ -550,6 +556,4 @@ void Cmfc_mufler_1Dlg::OnBnClickedSpline()
 	} 
 
 	RF60x_ClosePort( hRF60x );
-
-
 }

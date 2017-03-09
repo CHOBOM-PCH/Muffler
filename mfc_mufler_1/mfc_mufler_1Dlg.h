@@ -72,4 +72,5 @@ public:
 	int mesured_data;
 
 
+	afx_msg void OnBnClickedSensorbtn();
 };
