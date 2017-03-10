@@ -12,20 +12,27 @@
 #endif
 
 /////////스플라인 변수///
-int z = 0;
-int ke = 0;
+int count_y = 0;
+int count_delay = 0;
 std::vector<double> x;
 std::vector<double> y;
+std::vector<double> z;
 std::vector<double> x_m;
 std::vector<double> y_m;
+std::vector<double> z_m;
 std::vector<double>* x_z;
 std::vector<double>* y_z;
+std::vector<double>* z_z;
+////////////////////////////
 
-////////////변위센서 변수
-	HANDLE				hRF60x			= INVALID_HANDLE_VALUE;
-	USHORT				usMeasured;
-	RF60xHELLOANSWER	hlans;
+int k = 0;//timer 234에서 카운팅을 위한 변수
 
+////////////변위센서 변수///////////
+HANDLE				hRF60x			= INVALID_HANDLE_VALUE;
+USHORT				usMeasured;
+RF60xHELLOANSWER	hlans;
+CString sensor_port;
+///////////////////////////////////
 
 
 // 응용 프로그램 정보에 사용되는 CAboutDlg 대화 상자입니다.
@@ -77,6 +84,7 @@ void Cmfc_mufler_1Dlg::DoDataExchange(CDataExchange* pDX)
 	CDialogEx::DoDataExchange(pDX);
 	DDX_Control(pDX, IDC_Mufler_IMG, Mufler_img);
 	DDX_Text(pDX, IDC_Line, line_data);
+	DDX_Control(pDX, IDC_SerialPort, m_port);
 }
 
 BEGIN_MESSAGE_MAP(Cmfc_mufler_1Dlg, CDialogEx)
@@ -88,6 +96,8 @@ BEGIN_MESSAGE_MAP(Cmfc_mufler_1Dlg, CDialogEx)
 	ON_BN_CLICKED(IDC_Open_btn, &Cmfc_mufler_1Dlg::OnBnClickedOpenbtn)
 	ON_BN_CLICKED(IDC_Spline, &Cmfc_mufler_1Dlg::OnBnClickedSpline)
 	ON_BN_CLICKED(IDC_Sensor_btn, &Cmfc_mufler_1Dlg::OnBnClickedSensorbtn)
+	ON_BN_CLICKED(IDC_Clear, &Cmfc_mufler_1Dlg::OnBnClickedClear)
+
 END_MESSAGE_MAP()
 
 
@@ -140,7 +150,7 @@ BOOL Cmfc_mufler_1Dlg::OnInitDialog()
 	ScreenToClient(rect);
 
 	m_Graph.Create(WS_VISIBLE|WS_CHILD, rect, this);             // (241) / 150 -> 350       (327) / 150 -> 500
-	m_Graph.SetRanges(-600, 600);            // Y축  0 에서 100 까지 다시그림
+	m_Graph.SetRanges(-100, 300);            // Y축  0 에서 100 까지 다시그림
 
 	m_Graph.SetBackgroundColor(RGB(0,0,0));
 	m_Graph.SetGridColor(RGB(255,255,255));
@@ -152,17 +162,23 @@ BOOL Cmfc_mufler_1Dlg::OnInitDialog()
 	//sprintf(buf, "                      Time < 10[ms] sampling - %d points >", num);
 	wsprintf(buf,_T( "Time < 10[ms] sampling >"));
 	m_Graph.SetXUnits(buf, _T("0") ) ;
-	m_Graph.SetYUnits(_T("Velocity < mm >"), _T("-600.0"), _T("600.0") ) ;
+	m_Graph.SetYUnits(_T("Velocity < mm >"), _T("-100.0"), _T("300.0") ) ;
 	m_Graph.SetLegendLabel(_T("X axis"), 0);
-	m_Graph.SetLegendLabel(_T("Y axis"), 1);
-	m_Graph.SetLegendLabel(_T("Total"), 2);
+	m_Graph.SetLegendLabel(_T("Z axis"), 1);
+	//m_Graph.SetLegendLabel(_T("Total"), 2);
 	///////////////////////////////////////////////////////////////////////
 
 	//변위 센서////////////////////////////////////////////////////////////
-
-
+	m_port.AddString(_T("COM1:"));
+	m_port.AddString(_T("COM2:"));
+	m_port.AddString(_T("COM3:"));
+	m_port.AddString(_T("COM4:"));
+	m_port.AddString(_T("COM5:"));
+	m_port.SetCurSel(2);//default COM3포트
+	m_port.GetLBText(2,sensor_port);
+	///변위센서 포트 선택후 열기////////////////////////////////////
 	memset(&hlans, 0x00, sizeof(RF60xHELLOANSWER));
-	RF60x_OpenPort("COM3:", CBR_9600, &hRF60x);
+	RF60x_OpenPort(/*"COM3:"*/(LPSTR)(LPCTSTR)sensor_port, CBR_9600, &hRF60x);
 	height = 0;
 	sensor_range = 0;
 	mesured_data = 0;
@@ -230,9 +246,10 @@ void Cmfc_mufler_1Dlg::OnTimer(UINT_PTR nIDEvent)
 
 	int distance = 0; //거리측정용 변수선언
 
+
 	if(nIDEvent == 123){
 		capture->read(O_img);
-		ke = ke+1;
+		count_delay = count_delay+1;
 
 		if(O_img.empty()){//재생이 끝나고 나가기
 			KillTimer(123);
@@ -240,37 +257,6 @@ void Cmfc_mufler_1Dlg::OnTimer(UINT_PTR nIDEvent)
 
 		}
 
-		//bit info에서 bitcount 정의 bpp 8bit 24bit 32bit 이미지
-		//int bpp = 8 * O_img.elemSize();
-		//   assert((bpp == 8 || bpp == 24 || bpp == 32));
-		//
-		//   int padding = 0;
-		//   //32 bit image is always DWORD aligned because each pixel requires 4 bytes
-		//   if (bpp < 32)
-		//       padding = 4 - (O_img.cols % 4);
-		//
-		//   if (padding == 4)
-		//       padding = 0;
-		//
-		//   int border = 0;
-		//   //32 bit image is always DWORD aligned because each pixel requires 4 bytes
-		//   if (bpp < 32)
-		//   {
-		//       border = 4 - (O_img.cols % 4);
-		//   }
-		//
-		//
-		//
-		//   Mat mat_temp;
-		//   if (border > 0 || mat_frame.isContinuous() == false)
-		//   {
-		//       // Adding needed columns on the right (max 3 px)
-		//       cv::copyMakeBorder(mat_frame, mat_temp, 0, 0, 0, border, cv::BORDER_CONSTANT, 0);
-		//   }
-		//   else
-		//   {
-		//       mat_temp = mat_frame;
-		//}
 
 		else{
 			RECT r;//출력할 윈도우의 크기 측정
@@ -322,7 +308,7 @@ void Cmfc_mufler_1Dlg::OnTimer(UINT_PTR nIDEvent)
 				xe2 = (eparams[2])/(k+1);//평균라인의 끝점
 				ye2 = (eparams[3])/(k+1);
 				Point pt1(x1,y1),pt2(x2,y2);
-				//line(H_img,pt1,pt2, Scalar(0,0,255),2);//각라인 출력
+				line(H_img,pt1,pt2, Scalar(0,0,255),1);//각라인 출력
 
 			}
 
@@ -333,18 +319,19 @@ void Cmfc_mufler_1Dlg::OnTimer(UINT_PTR nIDEvent)
 				e1 = xe1, e2 = xe2;
 				Point ept1(xe1,0),ept2(xe2,700);//평균라인 출력
 				line(H_img,ept1,ept2, Scalar(255,255,0),2);//그리기
-				Point ct1(512,0),ct2(512,768);//중심선 시작점 끝점
-				line(H_img,ct1,ct2, Scalar(0,255,255),1);//중심선 그리기
+				Point ct1(((O_img.cols)/2),0),ct2(((O_img.cols)/2),768);//중심선 시작점 끝점
+				line(H_img,ct1,ct2, Scalar(0,255,255),2);//중심선 그리기
 
-				distance = (xe1+xe2)/2 - 512;//용접과 중심의 거리측정
-				Point dp1((xe1+xe2)/2,300),dp2(512,300);//떨어진 거리 표현선
-				line(H_img,dp1,dp2, Scalar(255,0,255),1);
+				distance = ((O_img.cols)/2) - (xe1+xe2)/2 ;//용접과 중심의 거리측정
+				Point dp1((xe1+xe2)/2,300),dp2(((O_img.cols)/2),300);//떨어진 거리 표현선
+				//line(H_img,dp1,dp2, Scalar(255,0,255),1);
 				string te;//string 에 가변 숫자 변수 입력
 				stringstream ste;
 				ste<<"distance:"<<distance<<"pixel"<<endl;
 				te=ste.str();
 				putText(H_img,te,dp1,3,1.2,Scalar(0,255,0));//이미지에 거리표시
-				//data[0] = (double)(distance);
+
+				data[0] = (double)(distance);
 			}
 			//mfc_img 즉 CImage의 초기 설정
 
@@ -413,36 +400,76 @@ void Cmfc_mufler_1Dlg::OnTimer(UINT_PTR nIDEvent)
 			}
 		}
 		////////////시간마다 변위 센서 측정/////
-		RF60x_OpenPort("COM3:", CBR_9600, &hRF60x);
-			if (RF60x_HelloCmd( hRF60x, 1, &hlans ))
-			{
-				RF60x_Measure( hRF60x, 1, &usMeasured);
-				sensor_range = hlans.wDeviceRange;
-				mesured_data = usMeasured;
-				height = (double) (sensor_range*mesured_data/16384.0);
-				data[1] = height;
-			}
-			m_Graph.AppendPoints(data);
+		//RF60x_OpenPort("COM3:", CBR_9600, &hRF60x);
+
+		if (RF60x_HelloCmd( hRF60x, 1, &hlans ))
+		{
+			RF60x_Measure( hRF60x, 1, &usMeasured);
+			sensor_range = hlans.wDeviceRange;
+			mesured_data = usMeasured;
+			height = (double) (sensor_range*mesured_data/16384.0);
+			data[1] = height;
+		}
+		else {
+			height = 0;
+			data[1] = height;
+			line_data = _T("rs232 error!\r\n");
+			UpdateData(FALSE);
+		}
+		m_Graph.AppendPoints(data);
 	}
 
 
-	if (ke == 10){//너무 빨리 가져 오지 않기위한 delay줌
-		ke = 0;//delay초기화
+	if (count_delay == 10){//너무 빨리 가져 오지 않기위한 delay줌
+		count_delay = 0;//delay초기화
 		if(distance == 0);//거리측정이 안되었을때 쓰레기값 입력 방지
 		else{
 			//int time=1000;//토크 측정을 위한 시간
-			z = z + 10;//x값 변화량임 나중에 실제 촬영하면 속도에따라 변하는 거리값 삽입
-			x.push_back(z);
-			y.push_back(distance);
+			count_y = count_y + 10;//x값 변화량임 나중에 실제 촬영하면 속도에따라 변하는 거리값 삽입
+			x.push_back(distance);
+			y.push_back(count_y);
+			z.push_back(height);
 			x_z = &x_m;
 			y_z = &y_m;
-			
-			}
-		
+			z_z = &z_m;
+
+
 		}
 
-		CDialogEx::OnTimer(nIDEvent);
 	}
+
+
+	else if (nIDEvent == 234){
+		pEdit = (CEdit*)GetDlgItem(IDC_Line);
+		//for (int k =0;k<y_m.size();k++){//mono spline후 그래프
+		if (k < (y_m.size())){
+
+			//string te;//string 에 가변 숫자 변수 입력
+			//stringstream ste;
+			//ste<<"x = "<<x_m[k]<<", y = "<<y_m[k]<<", z = "<<z_m[k]<<"\r\n"<<endl;
+			//te=ste.str();
+			//line_data = (te.c_str());//string->CString
+
+
+			line_data.Format(_T("x = %lf , y = %lf,  z = %lf \r\n"), x_m[k], y_m[k], z_m[k]);
+			pEdit->SetSel(0,0);
+			pEdit->ReplaceSel(line_data);
+
+			//UpdateData(FALSE);//data의 값을 
+			data[0] = (double)(x_m[k]);
+			data[1] = (double)(z_m[k]);
+			m_Graph.AppendPoints(data);
+
+			k = k + 1;
+		}
+		else {
+			KillTimer(234);
+			k = 0;
+		}
+	}	
+
+	CDialogEx::OnTimer(nIDEvent);
+}
 
 
 void Cmfc_mufler_1Dlg::OnDestroy()
@@ -452,7 +479,9 @@ void Cmfc_mufler_1Dlg::OnDestroy()
 	// TODO: 여기에 메시지 처리기 코드를 추가합니다.
 	capture->release();
 	KillTimer(123);
-	RF60x_ClosePort( hRF60x );
+	KillTimer(234);
+	KillTimer(345);
+	//RF60x_ClosePort( hRF60x );
 }
 
 
@@ -460,7 +489,7 @@ void Cmfc_mufler_1Dlg::OnBnClickedOpenbtn()
 {
 	// TODO: 여기에 컨트롤 알림 처리기 코드를 추가합니다.
 
-	SetTimer(123,200,NULL);
+	SetTimer(123,20,NULL);
 
 
 }
@@ -469,63 +498,37 @@ void Cmfc_mufler_1Dlg::OnBnClickedOpenbtn()
 void Cmfc_mufler_1Dlg::OnBnClickedSpline()
 {
 	// TODO: 여기에 컨트롤 알림 처리기 코드를 추가합니다.
+	//스플라인을 검출하기위한 버튼
 
-	//SetTimer(234,1000,NULL);
-
-
-
-	if (x.size() > 2){//x배열의 개수가 2개 이상일때 그래프를 찾음
-		cubic_spline(x,y,x_z,y_z);
-	}
-	//for (int k = 0;k<x.size();k++){//입력된 값에 의한 그래프
-	//	//printf("입력된 값 x = %lf , y = %lf \n" ,x[k],y[k]);
-	//	string te;//string 에 가변 숫자 변수 입력
-
-	//	stringstream ste;
-	//	ste<<"x = "<<x[k]<<", y = "<<y[k]<<"\r\n"<<endl;
-
-	//	te=ste.str();
-	//	line_data = (te.c_str());//string->CString
-	//	//str.Format("%d", i); 
-	//	SetDlgItemText(IDC_Line, line_data); 
-	//	GetDlgItem(IDC_Line)->UpdateWindow();
-	//	//그래프 실행
-	//	//data[0] = y[k];
-
-
-	//	//UpdateData(FALSE);//data의 값을 올린다.
-	//	//	if (k == 0);
-	//	//	else
-	//	//		line(plot_img,Point(x[k-1],y[k-1]),Point(x[k],y[k]),Scalar(0,255,255),2,8,0);
-
-	//}
-
-
-	for (int k =0;k<x_m.size();k++){//mono spline후 그래프
-		string te;//string 에 가변 숫자 변수 입력
-		stringstream ste;
-		ste<<"x = "<<x_m[k]<<", y = "<<y_m[k]<<"\r\n"<<endl;
-
-		te=ste.str();
-		line_data = (te.c_str());//string->CString
-		SetDlgItemText(IDC_Line, line_data); 
-		GetDlgItem(IDC_Line)->UpdateWindow();
-		//UpdateData(FALSE);//data의 값을 
-		//data[0] = y_m[k];
-	}
-
-
-
+	if (y.size() > 2){//x배열의 개수가 2개 이상일때 그래프를 찾음
+		//vector에 값 중첩을 막기위해 초기화 필요
+		y_m.clear();
+		x_m.clear();
+		cubic_spline(y,x,y_z,x_z);
+		//y를 두번 클리어 하는것도 위에서 검사한 y값이 들어있기에 중복 방지
+		y_m.clear();
+		z_m.clear();
+		cubic_spline(y,z,y_z,z_z);
 
 	}
+	KillTimer(123);
+	SetTimer(234,100,NULL);
+
+}
 
 
 void Cmfc_mufler_1Dlg::OnBnClickedSensorbtn()
 {
 	// TODO: 여기에 컨트롤 알림 처리기 코드를 추가합니다.
+	SetTimer(345,100,NULL);
+	int select = m_port.GetCurSel();
+	if(select == -1);
+	else
+		m_port.GetLBText(select,sensor_port);
+
 	memset(&hlans, 0x00, sizeof(RF60xHELLOANSWER));
 
-	RF60x_OpenPort("COM3:", CBR_9600, &hRF60x);
+	//RF60x_OpenPort("COM3:", CBR_9600, &hRF60x);
 
 	if (RF60x_HelloCmd( hRF60x, 1, &hlans ))
 	{
@@ -549,11 +552,43 @@ void Cmfc_mufler_1Dlg::OnBnClickedSensorbtn()
 
 		te=ste.str();
 		line_data = (te.c_str());//string->CString
+		pEdit->SetSel(0,0);
+		pEdit->ReplaceSel(line_data);
+		//UpdateData(FALSE);//data의 값을 올린다.
+		RF60x_ClosePort( hRF60x );
 
-		UpdateData(FALSE);//data의 값을 올린다.
+	}
+	else {
+		line_data = _T("rs232 error!\r\n");
+		UpdateData(FALSE);
+	}
 
 
-	} 
-
-	RF60x_ClosePort( hRF60x );
 }
+
+
+void Cmfc_mufler_1Dlg::OnBnClickedClear()
+{
+	// TODO: 여기에 컨트롤 알림 처리기 코드를 추가합니다.
+	////////진행하던 타이머 끄기////
+	KillTimer(123);
+	KillTimer(234);
+	SetTimer(345,100,NULL);
+	///////////로그창 지우기+포트 선택////////
+	int select = m_port.GetCurSel();
+
+	if (select == -1){
+		line_data.Format(_T("clear \r\n"));
+		UpdateData(FALSE);
+	}
+	else {
+		m_port.GetLBText(select,sensor_port);
+		line_data.Format(_T("clear \r\n Select Port : %s \r\n"), sensor_port);
+		UpdateData(FALSE);
+	}
+	////////////////////////////////
+
+}
+
+
+

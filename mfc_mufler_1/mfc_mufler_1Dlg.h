@@ -70,7 +70,10 @@ public:
 	double height;
 	double sensor_range ;
 	int mesured_data;
-
+	CEdit *pEdit;
 
 	afx_msg void OnBnClickedSensorbtn();
+	afx_msg void OnBnClickedClear();
+	
+	CComboBox m_port;
 };
