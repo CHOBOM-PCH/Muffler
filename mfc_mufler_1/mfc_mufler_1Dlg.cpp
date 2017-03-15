@@ -138,8 +138,7 @@ BOOL Cmfc_mufler_1Dlg::OnInitDialog()
 	// 비디오 캡쳐를 위한 변수 선언
 	capture = new VideoCapture("mufler.mp4");
 	//capture = new VideoCapture(0);
-	if (!capture->isOpened())
-	{
+	if (!capture->isOpened()){
 		MessageBox(_T("비디오파일이 없습니다."));
 
 	}
@@ -354,8 +353,7 @@ void Cmfc_mufler_1Dlg::OnTimer(UINT_PTR nIDEvent)
 			}
 			//mfc_img 즉 CImage의 초기 설정
 
-			if (image_mfc)
-			{
+			if (image_mfc){
 				image_mfc->ReleaseDC();
 				delete image_mfc;
 				image_mfc = nullptr;
@@ -378,8 +376,7 @@ void Cmfc_mufler_1Dlg::OnTimer(UINT_PTR nIDEvent)
 			bitInfo.bmiHeader.biXPelsPerMeter = 0;
 			bitInfo.bmiHeader.biYPelsPerMeter = 0;
 			///////////////
-			if (H_img.cols == winSize.width  && H_img.rows == winSize.height)
-			{
+			if (H_img.cols == winSize.width  && H_img.rows == winSize.height){
 				// source and destination have same size
 				// transfer memory block
 				// NOTE: the padding border will be shown here. Anyway it will be max 3px width
@@ -390,8 +387,7 @@ void Cmfc_mufler_1Dlg::OnTimer(UINT_PTR nIDEvent)
 					0, 0, 0, H_img.rows,
 					H_img.data, &bitInfo, DIB_RGB_COLORS);
 			}
-			else
-			{
+			else {
 				// destination rectangle
 				int destx = 0, desty = 0;
 				int destw = winSize.width;
@@ -411,8 +407,7 @@ void Cmfc_mufler_1Dlg::OnTimer(UINT_PTR nIDEvent)
 			image_mfc->BitBlt(::GetDC(Mufler_img.m_hWnd), 0, 0);
 
 
-			if (image_mfc)
-			{
+			if (image_mfc){
 				image_mfc->ReleaseDC();
 				delete image_mfc; 
 				image_mfc = nullptr;
@@ -421,8 +416,7 @@ void Cmfc_mufler_1Dlg::OnTimer(UINT_PTR nIDEvent)
 		////////////시간마다 변위 센서 측정/////
 		//RF60x_OpenPort("COM3:", CBR_9600, &hRF60x);
 
-		if (RF60x_HelloCmd( hRF60x, 1, &hlans ))
-		{
+		if (RF60x_HelloCmd( hRF60x, 1, &hlans )){
 			RF60x_Measure( hRF60x, 1, &usMeasured);
 			sensor_range = hlans.wDeviceRange;
 			mesured_data = usMeasured;
@@ -442,7 +436,7 @@ void Cmfc_mufler_1Dlg::OnTimer(UINT_PTR nIDEvent)
 	if (count_delay == 10){//너무 빨리 가져 오지 않기위한 delay줌
 		count_delay = 0;//delay초기화
 		if(distance == 0);//거리측정이 안되었을때 쓰레기값 입력 방지
-		else{
+		else {
 			//int time=1000;//토크 측정을 위한 시간
 			count_y = count_y + 10;//x값 변화량임 나중에 실제 촬영하면 속도에따라 변하는 거리값 삽입
 			x.push_back(distance);
@@ -545,8 +539,7 @@ void Cmfc_mufler_1Dlg::OnBnClickedSensorbtn()
 	// TODO: 여기에 컨트롤 알림 처리기 코드를 추가합니다.
 	SetTimer(345,100,NULL);
 		
-	if (RF60x_HelloCmd( hRF60x, 1, &hlans ))
-	{
+	if (RF60x_HelloCmd( hRF60x, 1, &hlans )){
 
 		RF60x_Measure( hRF60x, 1, &usMeasured);
 		mesured_data = usMeasured;
