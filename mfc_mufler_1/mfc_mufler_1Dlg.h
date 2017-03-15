@@ -5,13 +5,15 @@
 #pragma once
 #include "afxwin.h"
 #include "use_opencv.h"
-#include <vector>
-#include <iostream>
 #include "Spline.h"
-#include <conio.h>
-#include <windows.h>
 #include "RF60x.h"
 #include "OScopeCtrl.h"
+
+#include <conio.h>
+#include <windows.h>
+#include <vector>
+#include <iostream>
+#include <fstream>
 
 using namespace cv;
 using namespace std;

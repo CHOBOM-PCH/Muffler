@@ -26,12 +26,14 @@ std::vector<double>* z_z;
 ////////////////////////////
 
 int k = 0;//timer 234에서 카운팅을 위한 변수
+ofstream fout;//파일 입출력을 위한 변수
 
 ////////////변위센서 변수///////////
 HANDLE				hRF60x			= INVALID_HANDLE_VALUE;
 USHORT				usMeasured;
 RF60xHELLOANSWER	hlans;
 CString sensor_port;
+const char* sen ;
 ///////////////////////////////////
 
 
@@ -169,22 +171,39 @@ BOOL Cmfc_mufler_1Dlg::OnInitDialog()
 	///////////////////////////////////////////////////////////////////////
 
 	//변위 센서////////////////////////////////////////////////////////////
-	m_port.AddString(_T("COM1:"));
-	m_port.AddString(_T("COM2:"));
-	m_port.AddString(_T("COM3:"));
-	m_port.AddString(_T("COM4:"));
-	m_port.AddString(_T("COM5:"));
+	m_port.AddString(_T("COM1"));
+	m_port.AddString(_T("COM2"));
+	m_port.AddString(_T("COM3"));
+	m_port.AddString(_T("COM4"));
+	m_port.AddString(_T("COM5"));
 	m_port.SetCurSel(2);//default COM3포트
 	m_port.GetLBText(2,sensor_port);
+	int select = m_port.GetCurSel();
+	switch (select){
+	case 0 : sen = "COM1:"; break;
+	case 1 : sen = "COM2:"; break;
+	case 2 : sen = "COM3:"; break;
+	case 3 : sen = "COM4:"; break;
+	case 4 : sen = "COM5:"; break;
+	default : sen = "ERROR"; break;
+	}
+	
 	///변위센서 포트 선택후 열기////////////////////////////////////
 	memset(&hlans, 0x00, sizeof(RF60xHELLOANSWER));
-	RF60x_OpenPort(/*"COM3:"*/(LPSTR)(LPCTSTR)sensor_port, CBR_9600, &hRF60x);
+	RF60x_OpenPort(sen, CBR_9600, &hRF60x);
 	height = 0;
 	sensor_range = 0;
 	mesured_data = 0;
 
+	line_data.Format(_T("포트 : %s \r\n"), sensor_port);
+	SetDlgItemText(IDC_Line,line_data);
+	//UpdateData(FALSE);
+	////////////////////////////////////////////////////////////////
+	////////////파일 입출력용//////////////
+	
+	fout.open("G_code.pba");
 
-
+	
 	return TRUE;  // 포커스를 컨트롤에 설정하지 않으면 TRUE를 반환합니다.
 }
 
@@ -454,7 +473,7 @@ void Cmfc_mufler_1Dlg::OnTimer(UINT_PTR nIDEvent)
 			line_data.Format(_T("x = %lf , y = %lf,  z = %lf \r\n"), x_m[k], y_m[k], z_m[k]);
 			pEdit->SetSel(0,0);
 			pEdit->ReplaceSel(line_data);
-
+			fout<<"x = "<<x_m[k]<<", y = "<<y_m[k]<<", z = "<<z_m[k]<<"\r\n"<<endl;
 			//UpdateData(FALSE);//data의 값을 
 			data[0] = (double)(x_m[k]);
 			data[1] = (double)(z_m[k]);
@@ -465,6 +484,8 @@ void Cmfc_mufler_1Dlg::OnTimer(UINT_PTR nIDEvent)
 		else {
 			KillTimer(234);
 			k = 0;
+			if (fout.is_open())
+				fout.close();
 		}
 	}	
 
@@ -481,7 +502,9 @@ void Cmfc_mufler_1Dlg::OnDestroy()
 	KillTimer(123);
 	KillTimer(234);
 	KillTimer(345);
-	//RF60x_ClosePort( hRF60x );
+	if (RF60x_HelloCmd( hRF60x, 1, &hlans )){
+			RF60x_ClosePort( hRF60x );
+		}
 }
 
 
@@ -521,15 +544,7 @@ void Cmfc_mufler_1Dlg::OnBnClickedSensorbtn()
 {
 	// TODO: 여기에 컨트롤 알림 처리기 코드를 추가합니다.
 	SetTimer(345,100,NULL);
-	int select = m_port.GetCurSel();
-	if(select == -1);
-	else
-		m_port.GetLBText(select,sensor_port);
-
-	memset(&hlans, 0x00, sizeof(RF60xHELLOANSWER));
-
-	//RF60x_OpenPort("COM3:", CBR_9600, &hRF60x);
-
+		
 	if (RF60x_HelloCmd( hRF60x, 1, &hlans ))
 	{
 
@@ -552,11 +567,10 @@ void Cmfc_mufler_1Dlg::OnBnClickedSensorbtn()
 
 		te=ste.str();
 		line_data = (te.c_str());//string->CString
-		pEdit->SetSel(0,0);
-		pEdit->ReplaceSel(line_data);
-		//UpdateData(FALSE);//data의 값을 올린다.
-		RF60x_ClosePort( hRF60x );
-
+		/*pEdit->SetSel(0,0);
+		pEdit->ReplaceSel(line_data);*/
+		UpdateData(FALSE);//data의 값을 올린다.
+		
 	}
 	else {
 		line_data = _T("rs232 error!\r\n");
@@ -574,10 +588,13 @@ void Cmfc_mufler_1Dlg::OnBnClickedClear()
 	KillTimer(123);
 	KillTimer(234);
 	SetTimer(345,100,NULL);
+	fout.open("G_code.txt");
 	///////////로그창 지우기+포트 선택////////
 	int select = m_port.GetCurSel();
+	
 
 	if (select == -1){
+
 		line_data.Format(_T("clear \r\n"));
 		UpdateData(FALSE);
 	}
@@ -585,6 +602,20 @@ void Cmfc_mufler_1Dlg::OnBnClickedClear()
 		m_port.GetLBText(select,sensor_port);
 		line_data.Format(_T("clear \r\n Select Port : %s \r\n"), sensor_port);
 		UpdateData(FALSE);
+		switch (select){
+		case 0 : sen = "COM1:"; break;
+		case 1 : sen = "COM2:"; break;
+		case 2 : sen = "COM3:"; break;
+		case 3 : sen = "COM4:"; break;
+		case 4 : sen = "COM5:"; break;
+		default : sen = "ERROR"; break;
+		}
+		if (RF60x_HelloCmd( hRF60x, 1, &hlans )){
+			RF60x_ClosePort( hRF60x );
+		}
+		memset(&hlans, 0x00, sizeof(RF60xHELLOANSWER));
+		RF60x_OpenPort(sen, CBR_9600, &hRF60x);
+		
 	}
 	////////////////////////////////
 
