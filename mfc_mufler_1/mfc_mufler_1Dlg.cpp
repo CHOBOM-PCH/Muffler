@@ -326,7 +326,7 @@ void Cmfc_mufler_1Dlg::OnTimer(UINT_PTR nIDEvent)
 				xe2 = (eparams[2])/(k+1);//평균라인의 끝점
 				ye2 = (eparams[3])/(k+1);
 				Point pt1(x1,y1),pt2(x2,y2);
-				line(H_img,pt1,pt2, Scalar(0,0,255),1);//각라인 출력
+				//line(H_img,pt1,pt2, Scalar(0,0,255),1);//각라인 출력
 
 			}
 
@@ -581,7 +581,7 @@ void Cmfc_mufler_1Dlg::OnBnClickedClear()
 	KillTimer(123);
 	KillTimer(234);
 	SetTimer(345,100,NULL);
-	fout.open("G_code.txt");
+	fout.open("G_code.pba");
 	///////////로그창 지우기+포트 선택////////
 	int select = m_port.GetCurSel();
 	
