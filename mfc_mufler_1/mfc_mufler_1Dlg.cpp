@@ -302,7 +302,7 @@ void Cmfc_mufler_1Dlg::OnTimer(UINT_PTR nIDEvent)
 		m_Graph.AppendPoints(data);
 	}
 
-
+	//가져오는 방식에 따라 삭제 가능
 	if (count_delay == 10){//너무 빨리 가져 오지 않기위한 delay줌
 		count_delay = 0;//delay초기화
 		if(distance == 0);//거리측정이 안되었을때 쓰레기값 입력 방지
@@ -314,7 +314,7 @@ void Cmfc_mufler_1Dlg::OnTimer(UINT_PTR nIDEvent)
 			x_z = &x_m;
 			y_z = &y_m;
 			z_z = &z_m;
-
+	//////////////////////////////////////////////
 
 		}
 
