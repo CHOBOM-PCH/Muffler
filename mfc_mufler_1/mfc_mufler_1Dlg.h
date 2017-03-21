@@ -4,10 +4,11 @@
 
 #pragma once
 #include "afxwin.h"
-#include "use_opencv.h"
+#include "line_detection.h"
 #include "Spline.h"
 #include "RF60x.h"
 #include "OScopeCtrl.h"
+#include "ImageToMFC.h"
 
 #include <conio.h>
 #include <windows.h>

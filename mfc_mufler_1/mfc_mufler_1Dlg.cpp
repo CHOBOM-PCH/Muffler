@@ -136,8 +136,10 @@ BOOL Cmfc_mufler_1Dlg::OnInitDialog()
 
 	// TODO: 여기에 추가 초기화 작업을 추가합니다.
 	// 비디오 캡쳐를 위한 변수 선언
+
 	capture = new VideoCapture("mufler.mp4");
 	//capture = new VideoCapture(0);
+	//O_img = cvLoadImage("image/4.png",-1);
 	if (!capture->isOpened()){
 		MessageBox(_T("비디오파일이 없습니다."));
 
@@ -186,7 +188,7 @@ BOOL Cmfc_mufler_1Dlg::OnInitDialog()
 	case 4 : sen = "COM5:"; break;
 	default : sen = "ERROR"; break;
 	}
-	
+
 	///변위센서 포트 선택후 열기////////////////////////////////////
 	memset(&hlans, 0x00, sizeof(RF60xHELLOANSWER));
 	RF60x_OpenPort(sen, CBR_9600, &hRF60x);
@@ -199,10 +201,10 @@ BOOL Cmfc_mufler_1Dlg::OnInitDialog()
 	//UpdateData(FALSE);
 	////////////////////////////////////////////////////////////////
 	////////////파일 입출력용//////////////
-	
+
 	fout.open("G_code.pba");
 
-	
+
 	return TRUE;  // 포커스를 컨트롤에 설정하지 않으면 TRUE를 반환합니다.
 }
 
@@ -272,150 +274,18 @@ void Cmfc_mufler_1Dlg::OnTimer(UINT_PTR nIDEvent)
 		if(O_img.empty()){//재생이 끝나고 나가기
 			KillTimer(123);
 			MessageBox(_T("비디오가 끝남"));
-
 		}
-
 
 		else{
-			RECT r;//출력할 윈도우의 크기 측정
-			Mufler_img.GetClientRect(&r);
-			cv::Size winSize(r.right, r.bottom);
+			//선 검출
+			Line_Detect(O_img,H_img,&distance);
+			data[0] = (double)(distance);
 
-
-
-			//머플러 선 검출
-
-			cvtColor(O_img,gray_img,CV_BGR2GRAY);
-
-			GaussianBlur(gray_img,blur_img,cv::Size(5,5),10);
-
-			adaptiveThreshold(blur_img,           // input image //지역가변 쓰레쉬 홀드사용
-				thresh_img,                              // output image
-				255,                                    // make pixels that pass the threshold full white
-				ADAPTIVE_THRESH_GAUSSIAN_C,         // use gaussian rather than mean, seems to give better imgs
-				THRESH_BINARY_INV,                  // invert so foreground will be white, background will be black
-				15,                                     // size of a pixel neighborhood used to calculate threshold value
-				2);                                     // constant subtracted from the mean or weighted mean
-
-			vector<Vec4i>lines;//lines 선언
-			HoughLinesP(thresh_img,//허프추출을 위해 참조할 이미지
-				lines,//참조된 선이 저장될 장소
-				1,//원점으로부터 거리간격rho
-				PI/270,//x축과의 각도 라디안 간격
-				10,//직선을 검출하기위한 accumulator의 임계값
-				200,//최소측정 라인길이
-				0);//최대 점의 간격
-			Mat H_img = O_img.clone();
-			Vec4d params,eparams;//vector형 행렬변수 선언
-			int x1, y1, x2, y2;
-			int xe1=0, ye1=0, xe2=0, ye2 =0;//변수들의 좌표값저장
-			int e1=0,e2=0;
-			for (int k = 0; k < lines.size(); k++){
-				params = lines[k];
-				x1 = params[0];//라인들의 시작점
-				y1 = params[1];
-				x2 = params[2];//라인들의 끝점
-				y2 = params[3];
-				//eparams = eparams + params;//라인들 각 좌표값의 합
-				eparams[0]=eparams[0]+params[0];
-				eparams[1]=eparams[1]+params[1];
-				eparams[2]=eparams[2]+params[2];
-				eparams[3]=eparams[3]+params[3];
-				xe1 = (eparams[0])/(k+1);//평균 라인의 시작점
-				ye1 = (eparams[1])/(k+1);
-				xe2 = (eparams[2])/(k+1);//평균라인의 끝점
-				ye2 = (eparams[3])/(k+1);
-				Point pt1(x1,y1),pt2(x2,y2);
-				//line(H_img,pt1,pt2, Scalar(0,0,255),1);//각라인 출력
-
-			}
-
-			if (xe1 == 0){
-				xe1 = e1, xe2 = e2;
-			}
-			else {
-				e1 = xe1, e2 = xe2;
-				Point ept1(xe1,0),ept2(xe2,700);//평균라인 출력
-				line(H_img,ept1,ept2, Scalar(255,255,0),2);//그리기
-				Point ct1(((O_img.cols)/2),0),ct2(((O_img.cols)/2),768);//중심선 시작점 끝점
-				line(H_img,ct1,ct2, Scalar(0,255,255),2);//중심선 그리기
-
-				distance = ((O_img.cols)/2) - (xe1+xe2)/2 ;//용접과 중심의 거리측정
-				Point dp1((xe1+xe2)/2,300),dp2(((O_img.cols)/2),300);//떨어진 거리 표현선
-				//line(H_img,dp1,dp2, Scalar(255,0,255),1);
-				string te;//string 에 가변 숫자 변수 입력
-				stringstream ste;
-				ste<<"distance:"<<distance<<"pixel"<<endl;
-				te=ste.str();
-				putText(H_img,te,dp1,3,1.2,Scalar(0,255,0));//이미지에 거리표시
-
-				data[0] = (double)(distance);
-			}
-			//mfc_img 즉 CImage의 초기 설정
-
-			if (image_mfc){
-				image_mfc->ReleaseDC();
-				delete image_mfc;
-				image_mfc = nullptr;
-			}
-
-			image_mfc = new CImage();
-			image_mfc->Create(winSize.width, winSize.height, 24);
-
-
-			BITMAPINFO bitInfo;
-			bitInfo.bmiHeader.biBitCount = 24;
-			bitInfo.bmiHeader.biWidth = H_img.cols;
-			bitInfo.bmiHeader.biHeight =- H_img.rows;
-			bitInfo.bmiHeader.biPlanes = 1;
-			bitInfo.bmiHeader.biSize = sizeof(BITMAPINFOHEADER);
-			bitInfo.bmiHeader.biCompression = BI_RGB;
-			bitInfo.bmiHeader.biClrImportant = 0;
-			bitInfo.bmiHeader.biClrUsed = 0;
-			bitInfo.bmiHeader.biSizeImage = 0;
-			bitInfo.bmiHeader.biXPelsPerMeter = 0;
-			bitInfo.bmiHeader.biYPelsPerMeter = 0;
-			///////////////
-			if (H_img.cols == winSize.width  && H_img.rows == winSize.height){
-				// source and destination have same size
-				// transfer memory block
-				// NOTE: the padding border will be shown here. Anyway it will be max 3px width
-
-				SetDIBitsToDevice(image_mfc->GetDC(),
-					//destination rectangle
-					0, 0, winSize.width, winSize.height,
-					0, 0, 0, H_img.rows,
-					H_img.data, &bitInfo, DIB_RGB_COLORS);
-			}
-			else {
-				// destination rectangle
-				int destx = 0, desty = 0;
-				int destw = winSize.width;
-				int desth = winSize.height;
-
-				// rectangle defined on source bitmap
-				// using imgWidth instead of mat_temp.cols will ignore the padding border
-				int imgx = 0, imgy = 0;
-				int imgWidth = H_img.cols;//- border;
-				int imgHeight = H_img.rows;
-
-				StretchDIBits(image_mfc->GetDC(),
-					destx, desty, destw, desth,
-					imgx, imgy, imgWidth, imgHeight,
-					H_img.data, &bitInfo, DIB_RGB_COLORS, SRCCOPY);
-			}
-			image_mfc->BitBlt(::GetDC(Mufler_img.m_hWnd), 0, 0);
-
-
-			if (image_mfc){
-				image_mfc->ReleaseDC();
-				delete image_mfc; 
-				image_mfc = nullptr;
-			}
+			//image 화면에 맞게 출력
+			ImagePrintInMFC(image_mfc,&Mufler_img,H_img);
 		}
+		
 		////////////시간마다 변위 센서 측정/////
-		//RF60x_OpenPort("COM3:", CBR_9600, &hRF60x);
-
 		if (RF60x_HelloCmd( hRF60x, 1, &hlans )){
 			RF60x_Measure( hRF60x, 1, &usMeasured);
 			sensor_range = hlans.wDeviceRange;
@@ -437,7 +307,6 @@ void Cmfc_mufler_1Dlg::OnTimer(UINT_PTR nIDEvent)
 		count_delay = 0;//delay초기화
 		if(distance == 0);//거리측정이 안되었을때 쓰레기값 입력 방지
 		else {
-			//int time=1000;//토크 측정을 위한 시간
 			count_y = count_y + 10;//x값 변화량임 나중에 실제 촬영하면 속도에따라 변하는 거리값 삽입
 			x.push_back(distance);
 			y.push_back(count_y);
@@ -454,21 +323,12 @@ void Cmfc_mufler_1Dlg::OnTimer(UINT_PTR nIDEvent)
 
 	else if (nIDEvent == 234){
 		pEdit = (CEdit*)GetDlgItem(IDC_Line);
-		//for (int k =0;k<y_m.size();k++){//mono spline후 그래프
 		if (k < (y_m.size())){
-
-			//string te;//string 에 가변 숫자 변수 입력
-			//stringstream ste;
-			//ste<<"x = "<<x_m[k]<<", y = "<<y_m[k]<<", z = "<<z_m[k]<<"\r\n"<<endl;
-			//te=ste.str();
-			//line_data = (te.c_str());//string->CString
-
 
 			line_data.Format(_T("x = %lf , y = %lf,  z = %lf \r\n"), x_m[k], y_m[k], z_m[k]);
 			pEdit->SetSel(0,0);
 			pEdit->ReplaceSel(line_data);
 			fout<<"x = "<<x_m[k]<<", y = "<<y_m[k]<<", z = "<<z_m[k]<<"\r\n"<<endl;
-			//UpdateData(FALSE);//data의 값을 
 			data[0] = (double)(x_m[k]);
 			data[1] = (double)(z_m[k]);
 			m_Graph.AppendPoints(data);
@@ -497,8 +357,8 @@ void Cmfc_mufler_1Dlg::OnDestroy()
 	KillTimer(234);
 	KillTimer(345);
 	if (RF60x_HelloCmd( hRF60x, 1, &hlans )){
-			RF60x_ClosePort( hRF60x );
-		}
+		RF60x_ClosePort( hRF60x );
+	}
 }
 
 
@@ -538,7 +398,7 @@ void Cmfc_mufler_1Dlg::OnBnClickedSensorbtn()
 {
 	// TODO: 여기에 컨트롤 알림 처리기 코드를 추가합니다.
 	SetTimer(345,100,NULL);
-		
+
 	if (RF60x_HelloCmd( hRF60x, 1, &hlans )){
 
 		RF60x_Measure( hRF60x, 1, &usMeasured);
@@ -563,7 +423,7 @@ void Cmfc_mufler_1Dlg::OnBnClickedSensorbtn()
 		/*pEdit->SetSel(0,0);
 		pEdit->ReplaceSel(line_data);*/
 		UpdateData(FALSE);//data의 값을 올린다.
-		
+
 	}
 	else {
 		line_data = _T("rs232 error!\r\n");
@@ -584,7 +444,7 @@ void Cmfc_mufler_1Dlg::OnBnClickedClear()
 	fout.open("G_code.pba");
 	///////////로그창 지우기+포트 선택////////
 	int select = m_port.GetCurSel();
-	
+
 
 	if (select == -1){
 
@@ -608,7 +468,7 @@ void Cmfc_mufler_1Dlg::OnBnClickedClear()
 		}
 		memset(&hlans, 0x00, sizeof(RF60xHELLOANSWER));
 		RF60x_OpenPort(sen, CBR_9600, &hRF60x);
-		
+
 	}
 	////////////////////////////////
 
